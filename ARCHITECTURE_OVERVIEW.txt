@@ -1,0 +1,364 @@
+================================================================================
+HEALTHCARE APPOINTMENTS SYSTEM - ARCHITECTURE OVERVIEW
+================================================================================
+
+SOLUTION STRUCTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION DOMAIN                                  │
+│                   Healthcare Clinic Appointments                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Master Data:                                                               │
+│  - Patients, Providers, Services, Insurance Plans, Specialties              │
+│  - Diagnoses, Provider Schedules                                            │
+│                                                                              │
+│  Transactional Data:                                                        │
+│  - Appointments (scheduling, status management)                             │
+│  - Visits (clinical encounters)                                             │
+│  - Bills (financial records)                                                │
+│  - Claims (insurance processing)                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+LAYERED ARCHITECTURE
+================================================================================
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    REPORTING & ANALYTICS LAYER (OLAP)                   │
+├──────────────────────────────────────────────────────────────────────────┤
+│  KPI Report Procedure (generate_kpi_report)                              │
+│  - 12+ KPIs with financial, behavioral, quality segments                 │
+│  - Parameterized by month and specialty                                  │
+│  - Includes trend analysis and top-N analysis                            │
+│  - Data quality checks embedded                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+                                   ↑
+                    ETL Load (etl_load_healthcare)
+                    - FULL & INCREMENTAL modes
+                    - SCD Type 2 change detection
+                    - Error handling & logging
+                                   ↑
+        ┌────────────────────────────────────────────────────────┐
+        │         DIMENSIONAL MODEL (Star Schema)                │
+        ├────────────────────────────────────────────────────────┤
+        │                                                         │
+        │  Dimensions:          Fact Tables:                     │
+        │  - dim_date           - fact_appointments (grained)    │
+        │  - dim_patient        - fact_visits (grained)          │
+        │  - dim_provider       - fact_bills_monthly (snapshot)  │
+        │  - dim_specialty                                       │
+        │  - dim_service        Materialized Views:              │
+        │  - dim_insurance      - mv_appt_by_provider_specialty  │
+        │  - dim_diagnosis      - mv_patient_visits_monthly      │
+        │  - dim_status         - mv_insurance_claims_perf       │
+        └────────────────────────────────────────────────────────┘
+                                   ↑
+        ┌────────────────────────────────────────────────────────┐
+        │    TRANSACTIONAL SYSTEM (OLTP - 3NF)                  │
+        ├────────────────────────────────────────────────────────┤
+        │                                                         │
+        │  Master Tables:                                        │
+        │  - test_patients       - test_providers                │
+        │  - test_services       - test_specialties              │
+        │  - test_insurance_plans - test_diagnosis_codes         │
+        │                                                         │
+        │  Transactional Tables:                                 │
+        │  - test_appointments    - test_visits                  │
+        │  - test_bills           - test_claims                  │
+        │                                                         │
+        │  Support Tables:                                       │
+        │  - test_patient_insurance (M:N)                        │
+        │  - test_visit_services (M:N)                           │
+        │  - test_visit_diagnoses (M:N)                          │
+        │  - test_provider_schedules                             │
+        │  - test_appointment_status_history (audit)             │
+        └────────────────────────────────────────────────────────┘
+                                   ↑
+        ┌────────────────────────────────────────────────────────┐
+        │      DOCUMENT STORAGE (JSON)                           │
+        ├────────────────────────────────────────────────────────┤
+        │  test_visit_documents                                  │
+        │  - Complete visit records in JSON format               │
+        │  - Nested structure with arrays                        │
+        │  - Version tracking (1.0, 1.1)                         │
+        │  - 6 query views for JSON extraction                   │
+        │  - Document Query Views:                               │
+        │    * v_completed_visits                                │
+        │    * v_visit_services_from_doc                         │
+        │    * v_visits_by_patient_name                          │
+        │    * v_visit_doc_with_bills                            │
+        │    * v_patient_vital_signs                             │
+        │    * v_visit_medications                               │
+        └────────────────────────────────────────────────────────┘
+
+DATA FLOW DIAGRAM
+================================================================================
+
+OLTP Transactions
+    ↓
+[test_appointments] ──┐
+[test_visits]        ├──→ ETL Load ──→ OLAP Dimensions
+[test_bills]         │    Procedure    & Fact Tables
+[test_patients]      │    (Full/Inc)    ↓
+[test_providers]  ───┘    SCD Type 2  Materialized
+[test_claims]             Change Det.  Views
+    ↓
+[test_visit_documents] (JSON) ──→ Document Query Views
+                                  ↓
+                              KPI Report
+                              (12+ KPIs)
+
+BUSINESS RULE ENFORCEMENT STRATEGY
+================================================================================
+
+Constraint Level:
+  ✓ Primary Keys - All tables have surrogate PKs
+  ✓ Foreign Keys - Referential integrity enforced
+  ✓ Unique Constraints - Business keys (email, license_number)
+  ✓ Check Constraints - Data validation (age, amounts, dates)
+
+Procedural Level (PL/SQL):
+  ✓ ETL - SCD Type 2 change detection
+  ✓ KPI Report - Data quality checks
+
+Application Level (Implicit):
+  ✓ Soft deletes (is_active flag)
+  ✓ Status lifecycle (documented in business rules)
+  ✓ Audit trail (appointment_status_history)
+
+DIMENSIONAL HIERARCHY
+================================================================================
+
+          Date Dimension (Mandatory)
+          ├── Year
+          ├── Quarter
+          ├── Month ──→ Conforms fact_bills_monthly
+          ├── Week
+          ├── Day of Week
+          └── Calendar Date (Day)
+
+     Patient Dimension (SCD Type 2)
+          ├── Patient ID (business key)
+          ├── Demographics (name, age, gender)
+          ├── Geography (city, state)
+          ├── Insurance Status
+          └── History (effective_from/to, current_flag)
+
+    Provider Dimension (SCD Type 2)
+          ├── Provider ID (business key)
+          ├── Name
+          ├── Specialty ──→ Links to Specialty Dimension
+          ├── Credentials (license)
+          └── History (effective_from/to, current_flag)
+
+        Specialty Dimension
+          ├── Specialty ID
+          ├── Name (Cardiology, Orthopedics, etc.)
+          └── Code (CARD, ORTHO, etc.)
+
+       Service Dimension
+          ├── Service ID
+          ├── Name (Checkup, ECG, etc.)
+          ├── Price
+          ├── Duration
+          └── Related Specialty
+
+      Insurance Dimension
+          ├── Insurance ID
+          ├── Plan Name
+          ├── Coverage %
+          ├── Copay
+          └── Deductible
+
+     Diagnosis Dimension
+          ├── Diagnosis ID
+          ├── ICD-10 Code
+          ├── Diagnosis Name
+          └── Category
+
+FACT TABLE GRAINS
+================================================================================
+
+fact_appointments
+  Grain: One row per appointment event
+  Measures: duration, flags (completed, noshow, cancelled)
+  Dimensions: date, patient, provider, specialty, service, status
+  Use: Appointment volume, completion rates, provider performance
+  Typical Query: "Get appointment completion rate by provider for November"
+
+fact_visits
+  Grain: One row per visit (actual encounter)
+  Measures: duration, service_amount, has_diagnosis flag
+  Dimensions: date, patient, provider, specialty, insurance
+  Use: Clinical activity, outcomes, service mix
+  Typical Query: "Average visit cost by specialty for Q4"
+
+fact_bills_monthly
+  Grain: One row per patient per month (snapshot)
+  Measures: Revenue, insurance paid, patient resp., status counts
+  Dimensions: date, patient, insurance
+  Aggregation: Monthly totals across multiple bills
+  Use: Financial KPIs, revenue trends, collection rates
+  Typical Query: "Monthly revenue and collection rate by insurance plan"
+
+KEY PERFORMANCE INDICATORS (KPIs)
+================================================================================
+
+Category 1: FINANCIAL (4 KPIs)
+  - Revenue per Appointment
+  - Insurance Collection Rate
+  - Patient Out-of-Pocket Percentage  
+  - Claims Approval Rate
+
+Category 2: BEHAVIORAL (4 KPIs)
+  - Appointment Completion Rate
+  - Appointment Cancellation Rate
+  - No-Show Rate
+  - Patient Utilization Rate
+
+Category 3: SEGMENTATION (2 KPIs)
+  - Revenue by Specialty
+  - Provider Performance Metrics
+
+Category 4: DATA QUALITY (2 KPIs)
+  - Data Integrity Score
+  - Diagnosis Completeness Rate
+
+JSON DOCUMENT STRUCTURE
+================================================================================
+
+{
+  "documentMetadata": {          ← Version & type tracking
+    "version": "1.0",
+    "documentType": "MedicalVisit"
+  },
+  "visitHeader": {                ← Visit basics
+    "visitId": 6000,
+    "visitDate": "2025-11-17",
+    "visitStatus": "COMPLETED"
+  },
+  "patientInfo": {                ← Embedded patient snapshot
+    "patientId": 1000,
+    "name": "John Smith",
+    "age": 60
+  },
+  "providerInfo": {               ← Embedded provider snapshot
+    "providerId": 2000,
+    "name": "Dr. Sarah",
+    "specialty": "Cardiology"
+  },
+  "clinicalAssessment": {         ← Clinical nested objects
+    "vitalSigns": {               ← Nested object
+      "bloodPressure": "120/80",
+      "heartRate": 72
+    },
+    "pastMedicalHistory": [       ← Array of objects
+      {"condition": "Hypertension", "status": "CONTROLLED"}
+    ],
+    "medications": [              ← Array of objects
+      {"name": "Lisinopril", "dose": "10mg"}
+    ]
+  },
+  "services": [                   ← Array of delivered services
+    {"serviceName": "Checkup", "price": 150}
+  ],
+  "statusHistory": [              ← Lifecycle audit trail
+    {"status": "COMPLETED", "timestamp": "2025-11-17T09:25:00Z"}
+  ]
+}
+
+SAMPLE DATA SNAPSHOT
+================================================================================
+
+Patients:       15 active (John Smith, Mary Johnson, Robert Williams, etc.)
+Providers:      8 across 5 specialties (Cardiology, Orthopedics, etc.)
+Specialties:    5 (Cardiology, Orthopedics, Dermatology, GP, Pediatrics)
+Insurance:      5 plans (Basic Health Plan, Premium Plus, Essential, etc.)
+Services:       10 medical services with pricing
+Diagnoses:      10 ICD-10 codes
+Appointments:   30+ in various statuses (SCHEDULED, COMPLETED, NO_SHOW, CANCELLED)
+Visits:         3 completed with clinical assessments
+Bills:          2+ billing records
+Claims:         2+ insurance claims
+Documents:      3 JSON visit documents with complete clinical data
+
+INDEXING STRATEGY
+================================================================================
+
+OLTP Indexes (Performance Optimization):
+  - Foreign Key Indexes:     idx_appt_patient, idx_appt_provider, etc.
+  - Business Key Indexes:    idx_patient_email, idx_provider_license
+  - Temporal Indexes:        idx_appt_date, idx_bill_date
+  - Composite Indexes:       idx_appt_provider_date (scheduling queries)
+  Purpose: Accelerate common queries (appointments by provider/date, etc.)
+
+OLAP Indexes:
+  - Dimension PKs & FKs:     All dimension lookup indexes
+  - Fact Composite Indexes:  idx_fact_appt_patient_date
+  Purpose: Support KPI aggregation and trend queries
+  
+JSON Indexes:
+  - Function-based:          idx_visdoc_status on JSON_VALUE(...)
+  Purpose: Fast document searches without loading full CLOB
+
+CONSTRAINT HIERARCHY
+================================================================================
+
+Level 1: Data Type Validation
+  - All columns have appropriate data types
+  - Date columns for temporal data
+  - Number columns for monetary amounts
+
+Level 2: Not Null Constraints
+  - All required fields have NOT NULL
+  - Allows NULL only where optional
+
+Level 3: Uniqueness Constraints
+  - Surrogate keys (PRIMARY KEY)
+  - Natural keys (UNIQUE constraints)
+  - Example: email UNIQUE on patients
+
+Level 4: Value Range Constraints
+  - CHECK constraints on numeric ranges
+  - Example: coverage_percentage BETWEEN 0 AND 100
+  - Example: appointment duration >= 15 minutes
+
+Level 5: Referential Integrity
+  - Foreign keys with CASCADE/RESTRICT
+  - Ensures no orphan records
+  - ON DELETE CASCADE for audit trails
+
+Level 6: Business Rules
+  - Complex rules enforced in ETL
+  - SCD Type 2 change detection
+  - Status lifecycle validation
+
+EXECUTION FLOW
+================================================================================
+
+  1. Create OLTP Schema (oltp_ddl.sql)
+     └─ 14 tables with 20+ constraints
+
+  2. Load OLTP Data (oltp_dml.sql)
+     └─ 15 patients, 8 providers, 30+ appointments
+
+  3. Create OLAP Schema (olap_ddl.sql)
+     └─ 7 dimensions, 3 facts, 3 materialized views
+
+  4. Execute ETL Load (etl_load_plsql.sql)
+     └─ Populates OLAP from OLTP
+     └─ Handles SCD Type 2 changes
+     └─ Logs all actions
+
+  5. Create Document Store (doc_store_ddl_dml.sql)
+     └─ JSON table with 3 sample documents
+     └─ 6 query views for document access
+
+  6. Generate KPI Report (kpi_report.sql)
+     └─ Parameterized by month & specialty
+     └─ 7 report sections with 12+ KPIs
+     └─ Includes trend analysis
+
+================================================================================
+END OF ARCHITECTURE OVERVIEW
+================================================================================

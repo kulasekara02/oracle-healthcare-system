@@ -1,0 +1,309 @@
+================================================================================
+QUICK START REFERENCE GUIDE
+Healthcare Appointments Database Solution - Oracle 19c
+================================================================================
+
+FILES INCLUDED (11 items)
+================================================================================
+
+REQUIRED SUBMISSION FILES (7):
+  1. oltp_ddl.sql              - OLTP schema with 14 tables & constraints
+  2. oltp_dml.sql              - Sample data (15 patients, 8 providers, 30+ appts)
+  3. olap_ddl.sql              - Star schema (7 dims, 3 facts, 3 MVs)
+  4. etl_load_plsql.sql        - ETL procedure with FULL/INCREMENTAL modes
+  5. doc_store_ddl_dml.sql     - JSON documents (3 samples, 6 queries)
+  6. kpi_report.sql            - KPI procedure (12+ metrics)
+  7. README.md                 - Complete documentation
+
+SUPPORTING REFERENCE FILES (4):
+  8. SUBMISSION_SUMMARY.txt    - Complete checklist of deliverables
+  9. EXECUTION_CHECKLIST.txt   - Step-by-step execution guide
+ 10. ARCHITECTURE_OVERVIEW.txt - Visual system architecture
+ 11. QUICK_START.txt           - This file
+
+EXECUTION IN 6 SIMPLE STEPS
+================================================================================
+
+$ sqlplus system/password@orcl
+
+Step 1: @oltp_ddl.sql
+        Creates 14 OLTP tables with 20+ constraints
+        Expected: "OLTP DDL completed successfully"
+
+Step 2: @oltp_dml.sql
+        Loads sample data
+        Expected: "OLTP DML Data Load Complete"
+
+Step 3: @olap_ddl.sql
+        Creates 7 dimensions, 3 facts, 3 MVs
+        Expected: "OLAP DDL completed successfully"
+
+Step 4: @etl_load_plsql.sql
+        Runs ETL (FULL load by default)
+        Expected: "ETL Load Completed Successfully" with record counts
+
+Step 5: @doc_store_ddl_dml.sql
+        Creates JSON document storage with 3 samples
+        Expected: "Document Store (JSON) created successfully"
+
+Step 6: SET PAGESIZE 50 LINESIZE 120
+        DBMS_OUTPUT.ENABLE(50000)
+        @kpi_report.sql
+        Expected: Multi-section KPI report with 12+ metrics
+
+WHAT GETS CREATED
+================================================================================
+
+OLTP (Transactional Database - 3NF):
+  ✓ 14 tables (master, transactional, M:N, audit)
+  ✓ 10+ sequences for auto-incrementing IDs
+  ✓ 20+ integrity constraints (PK, FK, UNIQUE, CHECK)
+  ✓ 30+ performance indexes
+
+OLAP (Analytical Database - Star Schema):
+  ✓ 7 dimensions (Date, Patient, Provider, Specialty, Service, Insurance, Diagnosis)
+  ✓ 3 fact tables (Appointments, Visits, Bills Monthly)
+  ✓ SCD Type 2 on Patient & Provider (change tracking)
+  ✓ 3 materialized views (pre-aggregated metrics)
+  ✓ 25+ analytical indexes
+
+Document Store (JSON):
+  ✓ 1 document table with JSON validation
+  ✓ 3 sample visit documents
+  ✓ 6 document query views
+  ✓ Supports nested objects and arrays
+
+Stored Procedures:
+  ✓ etl_load_healthcare() - ETL with change detection
+  ✓ generate_kpi_report() - Parameterized reporting
+
+SAMPLE DATA INCLUDED
+================================================================================
+
+Master Data:
+  - 15 patients (diverse demographics)
+  - 8 providers (across 5 specialties)
+  - 5 insurance plans
+  - 10 medical services
+  - 10 diagnosis codes
+  - 5 medical specialties
+
+Transactional Data:
+  - 30+ appointments (varied statuses: SCHEDULED, COMPLETED, NO_SHOW, CANCELLED)
+  - 3 completed visits (with clinical data)
+  - 2+ billing records
+  - 2+ insurance claims
+  - 3 JSON documents (complete medical visits)
+
+KPI REPORT OUTPUT
+================================================================================
+
+The generate_kpi_report procedure provides:
+
+Header:
+  - Report title
+  - Report period (month)
+  - Generation timestamp
+  - Segment filter (specialty or 'ALL')
+
+Section 1: Appointment Volume
+  - Total appointments
+  - Completed count
+  - Cancelled count
+  - No-show count
+  - Completion rate %
+  - Cancellation rate %
+  - No-show rate %
+
+Section 2: Financial Metrics
+  - Total revenue billed
+  - Insurance coverage amount
+  - Patient responsibility amount
+  - Revenue per appointment
+  - Insurance collection rate %
+
+Section 3: Visit & Clinical
+  - Total completed visits
+  - Average visit duration
+  - Average visit cost
+  - Average appointment duration
+
+Section 4: Patient Engagement
+  - Unique patients treated
+  - Total active patients
+  - Appointment frequency
+  - Patient utilization rate %
+
+Section 5: Trends
+  - Appointments trend vs. previous month
+  - Revenue trend vs. previous month
+  - Direction indicators (↑ ↓ →)
+
+Section 6: Top Performers
+  - Top 5 providers by appointments
+  - Top 5 specialties by revenue
+
+Section 7: Data Quality
+  - Orphan bills count
+  - Visits without diagnoses count
+  - Active patients with no activity count
+  - Data quality status
+
+QUICK VERIFICATION QUERIES
+================================================================================
+
+After execution, run these to verify:
+
+-- Count sample data
+SELECT COUNT(*) FROM test_patients;          -- Should be 15
+SELECT COUNT(*) FROM test_appointments;      -- Should be 30+
+SELECT COUNT(*) FROM test_visits;            -- Should be 3
+
+-- Verify OLAP populated
+SELECT COUNT(*) FROM fact_appointments;      -- Should match appointments
+SELECT COUNT(*) FROM fact_visits;            -- Should match visits
+
+-- Check documents
+SELECT COUNT(*) FROM test_visit_documents;   -- Should be 3
+
+-- Verify data quality
+SELECT COUNT(*) FROM test_bills b
+WHERE NOT EXISTS (SELECT 1 FROM test_visits v WHERE v.visit_id = b.visit_id);
+-- Should return 0 (no orphan bills)
+
+TROUBLESHOOTING
+================================================================================
+
+Issue: "Table does not exist"
+  → Run oltp_ddl.sql before other scripts
+
+Issue: "Foreign key constraint violated"
+  → Ensure scripts run in order: DDL, DML, OLAP, ETL, DOC, KPI
+
+Issue: "Materialized view not found"
+  → Run olap_ddl.sql to create views
+
+Issue: "No data in KPI report"
+  → Verify etl_load_plsql.sql completed successfully
+
+Issue: "JSON document queries return no rows"
+  → Run doc_store_ddl_dml.sql to insert sample documents
+
+BUSINESS RULES ENFORCED
+================================================================================
+
+Constraint-based (10):
+  ✓ Patient age: 0-120 years
+  ✓ Provider license not expired
+  ✓ Appointment end > start time
+  ✓ Appointment minimum 15 minutes
+  ✓ Non-negative service prices
+  ✓ Insurance copay/deductible >= 0
+  ✓ Bill payment <= responsibility
+  ✓ Claim payment <= claim amount
+  ✓ Effective dates (expiry > effective)
+  ✓ Email uniqueness (business key)
+
+Procedural-based (via ETL):
+  ✓ SCD Type 2 change tracking
+  ✓ Duplicate prevention
+  ✓ Data quality validation
+
+ARCHITECTURE HIGHLIGHTS
+================================================================================
+
+3-Tier Design:
+  1. OLTP Layer     - Transactional consistency
+  2. OLAP Layer     - Analytical performance
+  3. Document Layer - Flexible schema (JSON)
+
+Dimensional Grains:
+  - fact_appointments: 1 row per appointment
+  - fact_visits: 1 row per visit
+  - fact_bills_monthly: 1 row per patient per month
+
+Change Tracking:
+  - SCD Type 2 on Patient & Provider dimensions
+  - Appointment status history table (audit trail)
+  - JSON document versioning (1.0, 1.1)
+
+Document Model:
+  - Embedded: Patient info, vital signs, services, medications
+  - Referenced: Insurance plans, provider details
+  - Versioned: Schema evolution support
+
+KEY STATISTICS
+================================================================================
+
+Code Size:
+  - oltp_ddl.sql:         ~500 lines
+  - oltp_dml.sql:         ~400 lines
+  - olap_ddl.sql:         ~400 lines
+  - etl_load_plsql.sql:   ~350 lines
+  - doc_store_ddl_dml.sql: ~400 lines
+  - kpi_report.sql:       ~350 lines
+  TOTAL:                 ~2,400 lines of SQL/PL-SQL
+
+Database Objects:
+  - 14 OLTP tables
+  - 7 OLAP dimensions
+  - 3 OLAP fact tables
+  - 3 materialized views
+  - 6 document query views
+  - 2 stored procedures
+  - 10+ sequences
+  - 30+ indexes
+  TOTAL:                 ~80 database objects
+
+PERFORMANCE EXPECTATIONS
+================================================================================
+
+Execution Times:
+  - oltp_ddl.sql:         < 5 seconds (schema creation)
+  - oltp_dml.sql:         < 5 seconds (data insert)
+  - olap_ddl.sql:         < 10 seconds (dimensional schema)
+  - etl_load_plsql.sql:   10-20 seconds (ETL load)
+  - doc_store_ddl_dml.sql: < 5 seconds (documents)
+  - kpi_report.sql:       < 3 seconds (report generation)
+  TOTAL:                 ~45-60 seconds (complete execution)
+
+Query Performance:
+  - Appointment lookup:   < 100ms (indexed by provider_date)
+  - KPI calculations:     < 500ms (pre-aggregated views)
+  - JSON document query:  < 50ms (function-based index)
+  - Dimension lookup:     < 10ms (surrogate key)
+
+SUPPORT & DOCUMENTATION
+================================================================================
+
+For Complete Details, See:
+  - README.md              - Full documentation, 18 sections
+  - ARCHITECTURE_OVERVIEW.txt - Visual system design
+  - EXECUTION_CHECKLIST.txt - Step-by-step guide
+  - SUBMISSION_SUMMARY.txt - Requirements mapping
+
+For Quick Reference:
+  - This file (QUICK_START.txt) - Fast execution guide
+  - Comments in SQL files - Inline explanations
+
+REQUIREMENTS COVERED
+================================================================================
+
+✓ OLTP: 3NF, 14 tables, 20+ constraints, 10 business rules
+✓ OLAP: Star schema, 7 dims, 3 facts, SCD Type 2, MVs
+✓ Document: JSON storage, nested structures, versioning
+✓ KPI: 12+ metrics, financial, behavioral, quality
+✓ ETL: Full & incremental, change detection, error handling
+✓ Quality: Data integrity checks, 3 automated validations
+✓ Documentation: Complete with design rationale
+
+SUBMISSION READY ✓
+================================================================================
+
+All deliverables created and tested.
+Ready for evaluation on Oracle 19c.
+
+Execute in order as described above.
+Comprehensive documentation provided.
+
+Good luck with your course!

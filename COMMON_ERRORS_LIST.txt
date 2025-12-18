@@ -1,0 +1,148 @@
+===============================================
+COMMON ORACLE SQL ERRORS - PREVENTION CHECKLIST
+===============================================
+
+SETUP ERRORS:
+--------------
+1. ORA-00955: name is already used by an existing object
+2. ORA-00942: table or view does not exist
+3. ORA-01031: insufficient privileges
+4. ORA-01950: no privileges on tablespace
+5. SP2-0640: Not connected
+
+OLTP_DDL.SQL ERRORS:
+--------------------
+6. ORA-02264: name already used by an existing constraint
+7. ORA-02275: such a referential constraint already exists
+8. ORA-02289: sequence does not exist
+9. ORA-02260: table can have only one primary key
+10. ORA-00001: unique constraint violated (duplicate sequence/constraint names)
+
+OLTP_DML.SQL ERRORS:
+--------------------
+11. ORA-00001: unique constraint violated (duplicate data)
+12. ORA-02291: integrity constraint violated - parent key not found
+13. ORA-01400: cannot insert NULL into (NOT NULL column)
+14. ORA-01843: not a valid month (date format error)
+15. ORA-12899: value too large for column
+16. ORA-02290: check constraint violated
+
+OLAP_DDL.SQL ERRORS:
+--------------------
+17. ORA-00955: dimension/fact table already exists
+18. ORA-14400: inserted partition key does not map to any partition
+19. ORA-12008: error in materialized view refresh path
+20. ORA-23413: table does not have a materialized view log
+
+ETL_LOAD_PLSQL.SQL ERRORS:
+--------------------------
+21. ORA-06550: PLS-00103: Encountered the symbol (syntax error)
+22. ORA-04068: existing state of packages has been discarded
+23. PLS-00201: identifier must be declared
+24. ORA-01422: exact fetch returns more than requested number of rows
+25. ORA-00904: invalid identifier
+26. ORA-06502: PL/SQL: numeric or value error
+27. ORA-01476: divisor is equal to zero
+
+DOC_STORE_DDL_DML.SQL ERRORS:
+------------------------------
+28. ORA-40441: JSON syntax error
+29. ORA-40479: internal JSON serializer error
+30. ORA-02290: check constraint (IS JSON) violated
+31. ORA-40456: JSON path expression syntax error
+32. ORA-40454: path expression not a valid JSON object or array
+
+KPI_REPORT.SQL ERRORS:
+----------------------
+33. ORA-20000: ORU-10027: buffer overflow (SERVEROUTPUT buffer full)
+34. ORA-01403: no data found
+35. ORA-06512: at line X (procedure execution error)
+36. SP2-0734: unknown command (SERVEROUTPUT not enabled)
+
+CONNECTION/SESSION ERRORS:
+--------------------------
+37. ORA-12541: TNS:no listener
+38. ORA-01017: invalid username/password
+39. ORA-28000: account is locked
+40. ORA-12154: TNS:could not resolve service name
+
+CONSTRAINT ERRORS:
+------------------
+41. ORA-02292: integrity constraint violated - child record found (on DELETE)
+42. ORA-02291: integrity constraint violated - parent key not found (on INSERT)
+43. ORA-02293: cannot validate - check constraint violated
+44. ORA-02270: no matching unique or primary key for this column-list
+
+SEQUENCE ERRORS:
+----------------
+45. ORA-02289: sequence does not exist
+46. ORA-08004: sequence exceeds MAXVALUE and cannot be instantiated
+47. ORA-04013: number to CACHE must be greater than 1
+
+TABLESPACE ERRORS:
+------------------
+48. ORA-01536: space quota exceeded for tablespace
+49. ORA-01659: unable to allocate MINEXTENTS beyond X in tablespace
+50. ORA-30036: unable to extend segment by X in undo tablespace
+
+MATERIALIZED VIEW ERRORS:
+--------------------------
+51. ORA-12015: cannot create a fast refresh materialized view
+52. ORA-12052: cannot fast refresh materialized view
+53. ORA-12057: materialized view is invalid for some reason
+54. ORA-23413: table does not have a materialized view log
+
+JSON/DOCUMENT ERRORS:
+---------------------
+55. ORA-40441: JSON syntax error (malformed JSON)
+56. ORA-40442: JSON value exceeds maximum length
+57. ORA-40478: output value too large (JSON_VALUE result)
+58. ORA-40455: invalid path expression in JSON query
+
+INDEX ERRORS:
+-------------
+59. ORA-01418: specified index does not exist
+60. ORA-01408: such column list already indexed
+61. ORA-00972: identifier too long (index name > 30 chars in older Oracle)
+62. ORA-14047: ALTER TABLE|INDEX RENAME may not be combined
+
+TRIGGER ERRORS:
+---------------
+63. ORA-04088: error during execution of trigger
+64. ORA-04091: table is mutating, trigger may not see it
+65. ORA-04092: cannot COMMIT/ROLLBACK in a trigger
+66. ORA-30511: invalid DDL operation in system triggers
+
+DATA TYPE ERRORS:
+-----------------
+67. ORA-01722: invalid number (string to number conversion)
+68. ORA-06502: PL/SQL: numeric or value error: character string buffer too small
+69. ORA-01841: full year must be between -4713 and +9999
+70. ORA-01858: non-numeric character found where numeric expected
+
+===============================================
+PREVENTION CHECKLIST:
+===============================================
+
+BEFORE RUNNING SCRIPTS:
+[ ] Check connection to database
+[ ] Verify sufficient privileges (CREATE TABLE, SEQUENCE, etc.)
+[ ] Check tablespace quota
+[ ] Enable SERVEROUTPUT if needed
+[ ] Drop existing objects if re-running (use DROP scripts)
+
+SCRIPT EXECUTION ORDER:
+1. oltp_ddl.sql
+2. oltp_dml.sql
+3. olap_ddl.sql
+4. etl_load_plsql.sql
+5. doc_store_ddl_dml.sql
+6. kpi_report.sql
+
+AFTER EACH SCRIPT:
+[ ] Check for compilation errors (SHOW ERRORS)
+[ ] Verify object counts match expected
+[ ] Check constraint violations
+[ ] Review DBMS_OUTPUT messages
+
+===============================================
