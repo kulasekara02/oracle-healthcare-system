@@ -586,8 +586,8 @@ Automated checks included in [kpi_report.sql](kpi_report.sql):
 
 ## Contact Information
 
-**Student Name:** [Your Name]  
-**Student ID:** [Your ID]  
+**Student Name:** [kule]  
+**Student ID:** [not cool]  
 **Course:** Oracle Database - Practical Exam  
 **Submission Date:** December 31, 2025
 
